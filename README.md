@@ -45,15 +45,16 @@ cv8:
 	- change r,g,b based on running time
 cv9:
 - [x] Kompilace generických shaderů definových v souboru
-- [ ] Na-cache-ování uniform location pro zrychlení předání hodnot grafice.
+- [x] Na-cache-ování uniform location pro zrychlení předání hodnot grafice.
 - [x] Přidání Mash, model, vertex
 - [ ] Vyřešit aby se zdrojové soubory ne-includovali několikrát.
 cv10:
-- [ ] Načtěte alespoň dva objekty
-- [ ] Inicializujte perspektivu
+- [x] Načtěte alespoň dva objekty
+- [x] Inicializujte perspektivu
 - [ ] Kamera:
-	- [ ] Kolečko myši -> zoomování
-	- [ ] Klávesnice -> pohyb kamery
+	- [x] Kolečko myši -> zoomování
+	- [x] Klávesnice -> pohyb kamery
+	- [ ] Myš -> otáčení kamery
 Proplouvání kamerou mezi 3 krychličkami.
 
 > [!tip] Používejte smart pointery
