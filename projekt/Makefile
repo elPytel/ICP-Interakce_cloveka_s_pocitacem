@@ -16,8 +16,8 @@ LDFLAGS = `pkg-config --libs opencv4`
 TARGET = main.out
 
 # Source files
-#SRCS = main_threads.cpp
-SRCS = main.cpp
+SRCS = main_threads.cpp
+#SRCS = main.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)

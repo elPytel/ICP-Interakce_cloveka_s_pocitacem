@@ -22,6 +22,7 @@ public:
 	int run(void);
 	cv::Point2f find_face(cv::Mat & frame);
 	void draw_cross_relative(cv::Mat& img, cv::Point2f center_relative, int size);
+	char webcam_to_movement(const cv::Point2f& center);
 
 	// thread functions
 	void camera_processing_thread();
@@ -30,12 +31,19 @@ public:
 private:
     cv::VideoCapture capture;
     cv::CascadeClassifier face_cascade; // Face cascade classifier
+	
+    // FPS calculation
+    int frame_count_ui = 0;
+	int frame_count_cam = 0;
+    std::chrono::steady_clock::time_point last_fps_time_ui = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point last_fps_time_cam = std::chrono::steady_clock::now();
 
 	// thread controll variables
 	std::mutex mtx;
 	bool user_exit = false;
 	bool cam_disconnected = false;
 	bool process_images = true;
+	char movement = 'n'; // 'n' for no movement, 'l' for left, 'r' for right.
 
 	// thread shared variables
 	bool new_coordinates = false;
@@ -124,15 +132,30 @@ void App::draw_cross_relative(cv::Mat& img, const cv::Point2f center_relative, c
 	cv::line(img, p3, p4, CV_RGB(255, 0, 0), 3);
 }
 
+char App::webcam_to_movement(const cv::Point2f& center) {
+	// convert webcam coordinates to movement
+	char movement = 'n';
+	if (center.x < 0.4f) {
+		movement = 'r';
+	} else if (center.x > 0.6f) {
+		movement = 'l';
+	} else {
+		movement = 'n'; // no movement
+	}
+	return movement;
+}
+
 void App::UI_thread() {
 	cv::Point2f center_local;
 	cv::Mat frame_local;
+	char movement_local;
 	// wait for first frame
 	while (!new_coordinates) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	do {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 		// get global variables
 		{
 			std::lock_guard<std::mutex> lock(mtx);
@@ -140,8 +163,10 @@ void App::UI_thread() {
 				center_local = center;
 				frame.copyTo(frame_local);
 				new_coordinates = false;
+				movement_local = movement;
 				
 				std::cout << "found normalized center: " << center << std::endl;
+				std::cout << "movement: " << movement_local << std::endl;
 			}
 		}
 
@@ -150,6 +175,17 @@ void App::UI_thread() {
 		frame_local.copyTo(scene_cross);
         draw_cross_relative(scene_cross, center, 30);
 		cv::imshow("scene", scene_cross);
+
+		// FPS calculation
+        frame_count_ui++;
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_fps_time_ui).count();
+        if (duration >= 1) {
+            double fps = frame_count_ui / static_cast<double>(duration);
+            std::cout << "UI FPS: " << fps << std::endl;
+            frame_count_ui = 0;
+            last_fps_time_ui = now;
+        }
 		
 	} while (cv::pollKey() != 27 || cam_disconnected); //message loop untill ESC
 	user_exit = true;
@@ -170,12 +206,26 @@ void App::camera_processing_thread() {
 		// find face
         center_local = find_face(frame_local);
 
+		char movement_local = webcam_to_movement(center_local);
+
 		// update global variables
 		{
 			std::lock_guard<std::mutex> lock(mtx);
 			frame_local.copyTo(frame);	// TODO: use shared pointer (swap)
 			center = center_local;
 			new_coordinates = true;
+			movement = movement_local;
+		}
+
+		// FPS calculation
+		frame_count_cam++;
+		auto now = std::chrono::steady_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::seconds>(now - last_fps_time_cam).count();
+		if (duration >= 1) {
+			double fps = frame_count_cam / static_cast<double>(duration);
+			std::cout << "Camera FPS: " << fps << std::endl;
+			frame_count_cam = 0;
+			last_fps_time_cam = now;
 		}
 	} while (process_images);
 }
